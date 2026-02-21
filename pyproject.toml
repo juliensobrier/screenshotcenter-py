@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "screenshotcenter"
+version = "1.0.0"
+description = "Python SDK for the ScreenshotCenter API"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "ScreenshotCenter", email = "support@screenshotcenter.com" }]
+keywords = ["screenshot", "api", "web", "automation", "pdf"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Internet :: WWW/HTTP",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
+requires-python = ">=3.9"
+dependencies = []  # zero runtime dependencies — uses only stdlib
+
+[project.urls]
+Homepage = "https://screenshotcenter.com"
+Documentation = "https://screenshotcenter.com/docs"
+Repository = "https://github.com/juliensobrier/screenshotcenter-py"
+"Bug Tracker" = "https://github.com/juliensobrier/screenshotcenter-py/issues"
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0",
+  "pytest-cov>=4.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Integration tests are included in the default run; they self-skip when
+# SCREENSHOTCENTER_API_KEY is absent.
+
+[tool.coverage.run]
+source = ["screenshotcenter"]
+omit = ["tests/*"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["screenshotcenter"]
