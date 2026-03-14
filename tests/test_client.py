@@ -562,6 +562,61 @@ class TestAccountInfo:
 
 
 # ---------------------------------------------------------------------------
+# steps / trackers serialization
+# ---------------------------------------------------------------------------
+
+class TestStepsAndTrackersSerialization:
+    def test_steps_serialized_as_json(self, client):
+        steps = [{"command": "click", "element": "#accept"}, {"command": "sleep", "value": 2}]
+        with patch("urllib.request.urlopen", return_value=_json_resp(FIXTURE_SCREENSHOT)) as m:
+            client.screenshot.create(url="https://example.com", steps=steps)
+        called_url = m.call_args[0][0].full_url
+        assert "steps=" in called_url
+        import urllib.parse
+        parsed = urllib.parse.parse_qs(urllib.parse.urlparse(called_url).query)
+        assert "steps" in parsed
+        decoded = json.loads(parsed["steps"][0])
+        assert decoded == steps
+
+    def test_trackers_serialized_as_json(self, client):
+        trackers = [{"id": "ga", "name": "GA", "value": "UA-12345"}]
+        with patch("urllib.request.urlopen", return_value=_json_resp(FIXTURE_SCREENSHOT)) as m:
+            client.screenshot.create(url="https://example.com", trackers=trackers)
+        called_url = m.call_args[0][0].full_url
+        import urllib.parse
+        parsed = urllib.parse.parse_qs(urllib.parse.urlparse(called_url).query)
+        assert "trackers" in parsed
+        decoded = json.loads(parsed["trackers"][0])
+        assert decoded == trackers
+
+    def test_primitive_list_expanded_as_repeated_keys(self, client):
+        with patch("urllib.request.urlopen", return_value=_json_resp(FIXTURE_SCREENSHOT)) as m:
+            client.screenshot.create(url="https://example.com", tag=["homepage", "prod"])
+        called_url = m.call_args[0][0].full_url
+        import urllib.parse
+        parsed = urllib.parse.parse_qs(urllib.parse.urlparse(called_url).query)
+        assert parsed["tag"] == ["homepage", "prod"]
+
+    def test_steps_not_stringified_as_python_repr(self, client):
+        steps = [{"command": "click", "element": "button"}]
+        with patch("urllib.request.urlopen", return_value=_json_resp(FIXTURE_SCREENSHOT)) as m:
+            client.screenshot.create(url="https://example.com", steps=steps)
+        called_url = m.call_args[0][0].full_url
+        assert "%27command%27" not in called_url
+        assert "'command'" not in called_url
+
+    def test_dict_param_serialized_as_json(self, client):
+        geo = {"lat": 48.8566, "lon": 2.3522}
+        with patch("urllib.request.urlopen", return_value=_json_resp(FIXTURE_SCREENSHOT)) as m:
+            client.screenshot.create(url="https://example.com", geo_overrides=geo)
+        called_url = m.call_args[0][0].full_url
+        import urllib.parse
+        parsed = urllib.parse.parse_qs(urllib.parse.urlparse(called_url).query)
+        decoded = json.loads(parsed["geo_overrides"][0])
+        assert decoded == geo
+
+
+# ---------------------------------------------------------------------------
 # Error class properties
 # ---------------------------------------------------------------------------
 

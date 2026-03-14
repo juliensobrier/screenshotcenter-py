@@ -39,16 +39,20 @@ DEFAULT_WAIT_TIMEOUT = 120.0  # seconds
 def _build_query(params: Dict[str, Any]) -> str:
     """Encode a dict as a URL query string.
 
-    Lists are expanded as repeated keys (``tag=a&tag=b``).
-    Dicts are JSON-serialised.  ``None`` values are skipped.
+    Lists of primitives are expanded as repeated keys (``tag=a&tag=b``).
+    Lists containing dicts (e.g. ``steps``, ``trackers``) are JSON-serialised
+    as a single value.  Dicts are JSON-serialised.  ``None`` values are skipped.
     """
     parts: list = []
     for k, v in params.items():
         if v is None:
             continue
         if isinstance(v, list):
-            for item in v:
-                parts.append((k, str(item)))
+            if any(isinstance(item, dict) for item in v):
+                parts.append((k, json.dumps(v)))
+            else:
+                for item in v:
+                    parts.append((k, str(item)))
         elif isinstance(v, dict):
             parts.append((k, json.dumps(v)))
         elif isinstance(v, bool):
