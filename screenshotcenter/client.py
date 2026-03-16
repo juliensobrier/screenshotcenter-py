@@ -134,6 +134,7 @@ class ScreenshotCenterClient:
 
         self.screenshot = ScreenshotNamespace(self)
         self.batch = BatchNamespace(self)
+        self.crawl = CrawlNamespace(self)
         self.account = AccountNamespace(self)
 
     # ------------------------------------------------------------------
@@ -627,6 +628,106 @@ class BatchNamespace:
                 return b
             if time.monotonic() + interval > deadline:
                 raise WaitTimeoutError(batch_id, int(timeout * 1000))
+            time.sleep(interval)
+
+
+# ---------------------------------------------------------------------------
+# Crawl namespace
+# ---------------------------------------------------------------------------
+
+class CrawlNamespace:
+    """All crawl-related API methods.
+
+    Access via ``client.crawl.*``.
+    """
+
+    def __init__(self, client: ScreenshotCenterClient) -> None:
+        self._client = client
+
+    def create(
+        self,
+        url: str,
+        domain: str,
+        max_urls: int,
+        **kwargs: Any,
+    ) -> dict:
+        """Start a new crawl job.
+
+        Args:
+            url:      Starting URL for the crawl (required).
+            domain:   Domain to restrict crawling to (required).
+            max_urls: Maximum number of URLs to crawl (required).
+            **kwargs: Any additional crawl parameters.
+
+        Example::
+
+            crawl = client.crawl.create(
+                url="https://example.com",
+                domain="example.com",
+                max_urls=100,
+            )
+        """
+        if not url:
+            raise ValueError('"url" is required')
+        if not domain:
+            raise ValueError('"domain" is required')
+        body_dict: Dict[str, Any] = {
+            "url": url,
+            "domain": domain,
+            "max_urls": max_urls,
+            **kwargs,
+        }
+        body = json.dumps(body_dict).encode("utf-8")
+        return self._client._post("/crawl/create", body, "application/json")
+
+    def info(self, crawl_id: int) -> dict:
+        """Get crawl status and details.
+
+        Example::
+
+            c = client.crawl.info(42)
+            print(c["status"])
+        """
+        return self._client._get("/crawl/info", {"id": crawl_id})
+
+    def list(self, **kwargs: Any) -> list:
+        """List recent crawls.
+
+        Args:
+            **kwargs: ``limit``, ``offset``, etc.
+        """
+        return self._client._get("/crawl/list", kwargs)
+
+    def cancel(self, crawl_id: int) -> None:
+        """Cancel a running crawl."""
+        body = json.dumps({"id": crawl_id}).encode("utf-8")
+        self._client._post("/crawl/cancel", body, "application/json")
+
+    def wait_for(
+        self,
+        crawl_id: int,
+        interval: float = DEFAULT_POLL_INTERVAL,
+        timeout: float = DEFAULT_WAIT_TIMEOUT,
+    ) -> dict:
+        """Poll until the crawl reaches ``finished`` or ``error``.
+
+        Args:
+            crawl_id: Crawl ID to poll.
+            interval: Seconds between polls (default: 2).
+            timeout:  Maximum total wait in seconds (default: 120).
+
+        Example::
+
+            result = client.crawl.wait_for(42, timeout=60)
+            print(result["status"])
+        """
+        deadline = time.monotonic() + timeout
+        while True:
+            c = self.info(crawl_id)
+            if c["status"] in ("finished", "error"):
+                return c
+            if time.monotonic() + interval > deadline:
+                raise WaitTimeoutError(crawl_id, int(timeout * 1000))
             time.sleep(interval)
 
 
